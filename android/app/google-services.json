@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1070574255763",
+    "project_id": "aegis-7b556",
+    "storage_bucket": "aegis-7b556.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070574255763:android:43a209eaa4e81973235766",
+        "android_client_info": {
+          "package_name": "com.polines.aegis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUnd6biBQQtGg7QSTMfPMCCjPI52k677g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
