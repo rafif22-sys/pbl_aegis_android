@@ -1,7 +1,7 @@
 // core/services/api_client.dart
 /// Base HTTP client — hanya berisi baseUrl dan headers.
 class ApiClient {
-  static const String baseUrl = 'http://10.252.234.244:8000/api';
+  static const String baseUrl = 'http://localhost:8000/api';
 
   /// Untuk request JSON biasa (GET, POST dengan body JSON)
   static Map<String, String> headers({String? token}) {
