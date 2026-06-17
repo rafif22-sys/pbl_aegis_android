@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/config/app_config.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../providers/laporan_provider.dart';
+import '../models/laporan_model.dart';
 import 'detail_patroli_page.dart';
 import 'widgets/aegis_top_header.dart';
 
@@ -12,57 +17,145 @@ class LaporanHarianPage extends StatefulWidget {
 }
 
 class _LaporanHarianPageState extends State<LaporanHarianPage> {
-  int _activeShift = 1; // Default Shift 1
+  late LaporanProvider _provider;
+  bool _isInit = false;
+  String _activeShift = 'Shift 1'; // Default Shift 1
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _provider = LaporanProvider(
+        token: context.read<AuthProvider>().token ?? '',
+      );
+      _provider.fetchDetailHarian(widget.tanggal);
+      setState(() {
+        _isInit = true;
+      });
+    });
+  }
+
+  // --- HELPER UNTUK FORMAT TANGGAL ---
+  String _formatTanggal(String tanggal) {
+    try {
+      DateTime parsedDate = DateTime.parse(tanggal);
+      
+      List<String> hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+      List<String> bulan = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+
+      String namaHari = hari[parsedDate.weekday - 1];
+      String namaBulan = bulan[parsedDate.month - 1];
+
+      return '$namaHari, ${parsedDate.day} $namaBulan ${parsedDate.year}';
+    } catch (e) {
+      // Jika parsing gagal (misal format dari API bukan standar DateTime), 
+      // kembalikan string aslinya sebagai fallback
+      return tanggal; 
+    }
+  }
+
+  // --- HELPER UNTUK FORMAT JAM ---
+  String _formatJam(String jam) {
+    try {
+      // 1. Ekstrak bagian waktunya saja jika ada tanggal 
+      // (misal: "2026-06-17T07:00:00" diubah menjadi "07:00:00")
+      String timeString = jam;
+      if (jam.contains('T')) {
+        timeString = jam.split('T').last;
+      } else if (jam.contains(' ')) {
+        timeString = jam.split(' ').last;
+      }
+
+      // 2. Memecah "07:00:00" menjadi ["07", "00", "00"]
+      final parts = timeString.split(':');
+      if (parts.length >= 2) {
+        return '${parts[0]}.${parts[1]}'; // Menggunakan titik (.) sesuai desain
+      }
+      
+      // Jika formatnya bukan titik dua, kembalikan string waktunya langsung
+      return timeString;
+    } catch (e) {
+      // Jika terjadi error, kembalikan data asli sebagai fallback
+      return jam;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE4F0FB), // Background biru muda
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const AegisTopHeader(),
-            _buildTitleBar(context),
+    if (!_isInit) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFE4F0FB),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Tanggal Laporan
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        widget.tanggal,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+    return ChangeNotifierProvider.value(
+      value: _provider,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE4F0FB), // Background biru muda
+        body: SafeArea(
+          child: Consumer<LaporanProvider>(
+            builder: (context, prov, child) {
+              final loading = prov.loadingDetail;
+              final error = prov.errorDetail;
+              final detail = prov.detailHarian;
 
-                    // Kotak Summary 2x2
-                    _buildSummaryGrid(),
-                    const SizedBox(height: 24),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AegisTopHeader(),
+                  _buildTitleBar(context),
 
-                    // Toggle Shift 1, 2, 3
-                    _buildShiftToggle(),
-                    const SizedBox(height: 20),
+                  Expanded(
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : error != null
+                            ? Center(child: Text(error, style: const TextStyle(color: Colors.red)))
+                            : detail == null
+                                ? const Center(child: Text('Data tidak ditemukan'))
+                                : SingleChildScrollView(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Tanggal Laporan (Sudah Diformat)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            _formatTanggal(widget.tanggal), // Menggunakan helper format
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
 
-                    // List Laporan per Shift
-                    _buildPatrolList(),
-                    const SizedBox(height: 30),
-                  ],
-                ),
-              ),
-            ),
-          ],
+                                        // Kotak Summary 2x2
+                                        _buildSummaryGrid(detail.ringkasan),
+                                        const SizedBox(height: 24),
+
+                                        // Toggle Shift (Dinamis dari data)
+                                        _buildShiftToggle(detail.detailPetugas),
+                                        const SizedBox(height: 20),
+
+                                        // List Laporan per Shift
+                                        _buildPatrolList(detail.detailPetugas),
+                                        const SizedBox(height: 30),
+                                      ],
+                                    ),
+                                  ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -93,7 +186,9 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
   }
 
   // --- WIDGET KOTAK SUMMARY (2x2) ---
-  Widget _buildSummaryGrid() {
+  Widget _buildSummaryGrid(RingkasanStatistik ringkasan) {
+    int totalIsu = ringkasan.totalCheckpoint - ringkasan.checkpointAman;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(16),
@@ -114,7 +209,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
             children: [
               Expanded(
                 child: _buildSummaryItem(
-                  '10',
+                  '${ringkasan.totalPatroli}',
                   'Total Patroli',
                   Icons.verified_user_outlined,
                   const Color(0xFFDDF3F5),
@@ -123,7 +218,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildSummaryItem(
-                  '24',
+                  '${ringkasan.totalCheckpoint}',
                   'Total Checkpoint',
                   Icons.location_on_outlined,
                   const Color(0xFFBDE8C0),
@@ -136,7 +231,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
             children: [
               Expanded(
                 child: _buildSummaryItem(
-                  '24',
+                  '${ringkasan.totalPetugas}',
                   'Petugas',
                   Icons.person,
                   const Color(0xFFBDCBE1),
@@ -145,7 +240,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildSummaryItem(
-                  '24',
+                  '$totalIsu',
                   'Isu',
                   Icons.error_outline,
                   const Color(0xFFFDE1E1),
@@ -200,31 +295,42 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
   }
 
   // --- WIDGET TOGGLE SHIFT ---
-  Widget _buildShiftToggle() {
+  Widget _buildShiftToggle(List<DetailPetugas> petugasList) {
+    final shifts = petugasList.map((e) => e.shift).toSet().toList();
+    if (shifts.isEmpty) return const SizedBox();
+
+    shifts.sort();
+    
+    if (!shifts.contains(_activeShift) && shifts.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _activeShift = shifts.first;
+        });
+      });
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E2E2), // Background abu-abu
+        color: const Color(0xFFE2E2E2), 
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        children: [
-          _buildShiftTab(1, 'Shift 1'),
-          _buildShiftTab(2, 'Shift 2'),
-          _buildShiftTab(3, 'Shift 3'),
-        ],
+        children: shifts.map((shiftName) {
+          return _buildShiftTab(shiftName, shiftName);
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildShiftTab(int shiftNumber, String label) {
-    bool isActive = _activeShift == shiftNumber;
+  Widget _buildShiftTab(String shiftName, String label) {
+    bool isActive = _activeShift == shiftName;
     return Expanded(
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _activeShift = shiftNumber;
+            _activeShift = shiftName;
           });
         },
         child: Container(
@@ -256,61 +362,47 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
   }
 
   // --- WIDGET LIST LAPORAN BERDASARKAN SHIFT ---
-  Widget _buildPatrolList() {
-    // Logika sederhana untuk menampilkan data berbeda sesuai tab shift
-    if (_activeShift == 1) {
-      return Column(
-        children: [
-          _buildPatrolCard(
-            'Aman',
-            'Budi Santoso',
-            '07.00 - 09.00',
-            '5 checkpoint',
-            const Color(0xFF34A853),
-          ),
-          _buildPatrolCard(
-            'Terdapat isu',
-            'Andi Wijaya',
-            '08.30 - 11.00',
-            '3 checkpoint',
-            const Color(0xFFD30000),
-          ),
-        ],
-      );
-    } else if (_activeShift == 2) {
-      return Column(
-        children: [
-          _buildPatrolCard(
-            'Aman',
-            'John Doe',
-            '15.30 - 17.45',
-            '5 checkpoint',
-            const Color(0xFF34A853),
-          ),
-        ],
-      );
-    } else {
-      return Column(
-        children: [
-          _buildPatrolCard(
-            '',
-            'Budi Santoso',
-            '23.00 - 02.00',
-            '5 checkpoint',
-            Colors.transparent,
-          ),
-        ],
-      );
+  Widget _buildPatrolList(List<DetailPetugas> petugasList) {
+    final filteredList = petugasList.where((p) => p.shift == _activeShift).toList();
+
+    if (filteredList.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text('Tidak ada petugas pada shift ini'),
+      ));
     }
+
+    return Column(
+      children: filteredList.map((petugas) {
+        int isu = petugas.checkpoints.where((c) => c.kondisi.toLowerCase() != 'aman').length;
+        String statusText;
+        Color statusColor;
+        
+        if (isu > 0) {
+          statusText = 'Terdapat $isu Isu';
+          statusColor = const Color(0xFFD30000);
+        } else if (petugas.checkpoints.isNotEmpty) {
+          statusText = 'Aman';
+          statusColor = const Color(0xFF34A853);
+        } else {
+          statusText = 'Belum Laporan';
+          statusColor = Colors.grey;
+        }
+
+        return _buildPatrolCard(
+          petugas: petugas,
+          status: statusText,
+          statusColor: statusColor,
+        );
+      }).toList(),
+    );
   }
 
-  Widget _buildPatrolCard(
-    String status,
-    String nama,
-    String waktu,
-    String checkpoint,
-    Color statusColor,
-  ) {
+  Widget _buildPatrolCard({
+    required DetailPetugas petugas,
+    required String status,
+    required Color statusColor,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 24, right: 24),
       decoration: BoxDecoration(
@@ -330,7 +422,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
           Container(
             height: 36,
             decoration: const BoxDecoration(
-              color: Color(0xFFEAF4FB), // Biru sangat muda
+              color: Color(0xFFEAF4FB), 
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -338,8 +430,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
             ),
             child: Row(
               children: [
-                if (status
-                    .isNotEmpty) // Tampilkan kotak warna hanya jika ada status
+                if (status.isNotEmpty) 
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     alignment: Alignment.center,
@@ -355,17 +446,18 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ),
                 Expanded(
                   child: Center(
                     child: Text(
-                      checkpoint,
+                      '${petugas.checkpoints.length} checkpoint',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 15,
+                        color: Colors.black87,
                       ),
                     ),
                   ),
@@ -374,56 +466,94 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
             ),
           ),
 
-          // Detail Petugas
+          // Detail Petugas dan Jadwal
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Info Petugas
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.grey.shade300,
-                    ), // Foto placeholder
+                    _buildFotoProfil(petugas.petugas.fotoProfil),
                     const SizedBox(width: 12),
-                    Text(
-                      'Petugas: $nama',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                    Expanded(
+                      child: Text(
+                        'Petugas: ${petugas.petugas.nama}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Cari baris kode ini di dalam _buildPatrolCard:
+                
+                // Info Waktu & Tombol Detail sejajar
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      Icons.insert_drive_file_outlined,
-                      size: 14,
-                      color: Colors.blue.shade300,
-                    ),
-                    const SizedBox(width: 4),
-                    // BUNGKUS TEKS DETAIL DENGAN GESTURE DETECTOR
+                    Builder(builder: (_) {
+                      // Ambil semua checkpoint yang punya waktu_laporan
+                      final cpDenganWaktu = petugas.checkpoints
+                          .where((c) => c.waktuLaporan != null &&
+                              c.waktuLaporan!.isNotEmpty)
+                          .toList();
+
+                      if (cpDenganWaktu.isEmpty) {
+                        // Fallback ke jam shift jika belum ada laporan
+                        return Text(
+                          'Waktu: ${_formatJam(petugas.jamMulai)} - ${_formatJam(petugas.jamSelesai)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        );
+                      }
+
+                      final waktuMulai  = cpDenganWaktu.first.waktuLaporan!;
+                      final waktuSelesai = cpDenganWaktu.last.waktuLaporan!;
+
+                      return Text(
+                        'Waktu: $waktuMulai - $waktuSelesai',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      );
+                    }),
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => DetailPatroliPage(
-                              namaPetugas: nama,
-                            ), // Kirim nama petugasnya
+                              petugasData: petugas, 
+                            ), 
                           ),
                         );
                       },
-                      child: Text(
-                        'Detail',
-                        style: TextStyle(
-                          color: Colors.blue.shade300,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.insert_drive_file_outlined,
+                            size: 16,
+                            color: Colors.blue.shade300,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Detail',
+                            style: TextStyle(
+                              color: Colors.blue.shade300,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -433,6 +563,24 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
           ),
         ],
       ),
+    );
+  }
+  // --- HELPER: Foto Profil ---
+  Widget _buildFotoProfil(String? fotoProfil) {
+    if (fotoProfil != null && fotoProfil.isNotEmpty) {
+      final url =
+          '${AppConfig.supabaseUrl}/storage/v1/object/public/${AppConfig.supabaseBucket}/$fotoProfil';
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: Colors.grey.shade300,
+        backgroundImage: NetworkImage(url),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: const Color(0xFF0D47A1),
+      child: const Icon(Icons.person, size: 22, color: Colors.white),
     );
   }
 }

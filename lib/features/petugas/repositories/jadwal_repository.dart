@@ -24,13 +24,19 @@ class JadwalRepository {
     final body = jsonDecode(res.body);
     final List raw = body['data'] ?? [];
 
+    
+    final List<JadwalModel> sorted = raw
+        .map((e) => JadwalModel.fromJson(e))
+        .toList()
+      ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+
     return {
       'minggu_mulai': body['minggu_mulai'],
       'minggu_akhir': body['minggu_akhir'],
-      'data': raw.map((e) => JadwalModel.fromJson(e)).toList(),
+      'data': sorted,
     };
   }
-
+  
   Future<List<JadwalModel>> getRiwayatAbsensi({
     required String token,
     String? tanggal,

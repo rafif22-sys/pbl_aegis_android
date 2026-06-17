@@ -346,7 +346,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
         _buildTombolMasuk(a),
         const SizedBox(height: 12),
         _buildTombolPulang(a),
-        if (a.sudahMasuk && a.rute != null) ...[
+        if (a.sudahMasuk && a.rute != null && a.status != 'alpha') ...[
           const SizedBox(height: 20),
           _buildSesiPatroli(a),
         ],
@@ -838,6 +838,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
 
   Widget _buildSesiPatroli(AbsensiModel a) {
     final rute = a.rute;
+    final isAlpha   = a.status == 'alpha';
     final isSelesai = rute != null && 
                       rute.jumlahCheckpoint > 0 && 
                       rute.jumlahDilaporkan >= rute.jumlahCheckpoint;
@@ -1076,10 +1077,15 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
 
   String _formatTanggal(String iso) {
     try {
-      final d = DateTime.parse(iso);
+      final datePart = iso.split('T').first;
+      final parts = datePart.split('-');
+      if (parts.length < 3) return iso;
+      final year  = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day   = int.parse(parts[2]);
       const bln = ['','Jan','Feb','Mar','Apr','Mei','Jun',
                    'Jul','Ags','Sep','Okt','Nov','Des'];
-      return '${d.day} ${bln[d.month]} ${d.year}';
+      return '$day ${bln[month]} $year';
     } catch (_) { return iso; }
   }
 }
