@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 
 // ─── Model Ringkasan Per-Hari ─────────────────────────────────────────────────
 class LaporanHarianRingkasan {
-  final String tanggal;       // "2026-04-14"
-  final String hari;          // "Jumat"
+  final String tanggal;
+  final String hari;
   final int totalPatroli;
   final int totalPetugas;
   final int totalCheckpoint;
@@ -56,6 +56,7 @@ class LaporanHarianDetail {
       );
 }
 
+// ─── Ringkasan Statistik ──────────────────────────────────────────────────────
 class RingkasanStatistik {
   final int totalPatroli;
   final int totalPetugas;
@@ -78,6 +79,7 @@ class RingkasanStatistik {
       );
 }
 
+// ─── Detail Petugas ───────────────────────────────────────────────────────────
 class DetailPetugas {
   final int idAbsensi;
   final InfoPetugas petugas;
@@ -110,40 +112,46 @@ class DetailPetugas {
   });
 
   factory DetailPetugas.fromJson(Map<String, dynamic> json) => DetailPetugas(
-        idAbsensi:      (json['id_absensi'] as num).toInt(),
-        petugas:        InfoPetugas.fromJson(
-                            json['petugas'] as Map<String, dynamic>),
-        posJaga:        json['pos_jaga']    as String,
-        shift:          json['shift']       as String,
-        jamMulai:       json['jam_mulai']   as String,
-        jamSelesai:     json['jam_selesai'] as String,
-        jamMasuk:       json['jam_masuk']   as String?,
-        jamPulang:      json['jam_pulang']  as String?,
-        status:         json['status']      as String,
-        fotoMasuk:      json['foto_masuk']  as String?,
-        fotoPulang:     json['foto_pulang'] as String?,
-        totalCheckpoint:(json['total_checkpoint'] as num).toInt(),
-        checkpoints:    (json['checkpoints'] as List)
-                            .map((e) => DetailCheckpoint.fromJson(
-                                    e as Map<String, dynamic>))
-                            .toList(),
+        idAbsensi:       (json['id_absensi']       as num).toInt(),
+        petugas:         InfoPetugas.fromJson(
+                             json['petugas'] as Map<String, dynamic>),
+        posJaga:         json['pos_jaga']           as String,
+        shift:           json['shift']              as String,
+        jamMulai:        json['jam_mulai']          as String,
+        jamSelesai:      json['jam_selesai']        as String,
+        jamMasuk:        json['jam_masuk']          as String?,
+        jamPulang:       json['jam_pulang']         as String?,
+        status:          json['status']             as String,
+        fotoMasuk:       json['foto_masuk']         as String?,
+        fotoPulang:      json['foto_pulang']        as String?,
+        totalCheckpoint: (json['total_checkpoint']  as num).toInt(),
+        checkpoints:     (json['checkpoints'] as List)
+                             .map((e) => DetailCheckpoint.fromJson(
+                                     e as Map<String, dynamic>))
+                             .toList(),
       );
 }
 
+// ─── Info Petugas ─────────────────────────────────────────────────────────────
 class InfoPetugas {
   final int id;
   final String nama;
   final String? fotoProfil;
 
-  const InfoPetugas({required this.id, required this.nama, this.fotoProfil});
+  const InfoPetugas({
+    required this.id,
+    required this.nama,
+    this.fotoProfil,
+  });
 
   factory InfoPetugas.fromJson(Map<String, dynamic> json) => InfoPetugas(
-        id:          (json['id'] as num).toInt(),
-        nama:         json['nama'] as String,
-        fotoProfil:   json['foto_profil'] as String?,
+        id:         (json['id'] as num).toInt(),
+        nama:        json['nama']       as String,
+        fotoProfil:  json['foto_profil'] as String?,
       );
 }
 
+// ─── Detail Checkpoint ────────────────────────────────────────────────────────
 class DetailCheckpoint {
   final int id;
   final String namaCheckpoint;
@@ -154,6 +162,9 @@ class DetailCheckpoint {
   final String? waktuLaporan;
   final double? latitude;
   final double? longitude;
+  // ── Field baru untuk fitur penanganan supervisor ──
+  final bool selesai;
+  final String? penanganan;
 
   const DetailCheckpoint({
     required this.id,
@@ -165,20 +176,49 @@ class DetailCheckpoint {
     this.waktuLaporan,
     this.latitude,
     this.longitude,
+    this.selesai = false,
+    this.penanganan,
   });
 
   factory DetailCheckpoint.fromJson(Map<String, dynamic> json) =>
       DetailCheckpoint(
-        id:             (json['id'] as num).toInt(),
+        id:             (json['id']              as num).toInt(),
         namaCheckpoint:  json['nama_checkpoint'] as String,
         kondisi:         json['kondisi']         as String,
         status:          json['status']          as String,
         catatan:         json['catatan']         as String?,
-        fotoBukti: _parseFotoBukti(json['foto_bukti']),
+        fotoBukti:       _parseFotoBukti(json['foto_bukti']),
         waktuLaporan:    json['waktu_laporan']   as String?,
-        latitude:        (json['latitude']  as num?)?.toDouble(),
-        longitude:       (json['longitude'] as num?)?.toDouble(),
+        latitude:        (json['latitude']       as num?)?.toDouble(),
+        longitude:       (json['longitude']      as num?)?.toDouble(),
+        // API bisa mengembalikan bool (true/false) atau int (1/0)
+        selesai:         _parseBool(json['selesai']),
+        penanganan:      json['penanganan']      as String?,
       );
+
+  /// Buat salinan objek dengan nilai [selesai] dan/atau [penanganan] baru.
+  /// Field lain tetap sama — digunakan setelah PATCH berhasil agar
+  /// UI terupdate tanpa refetch seluruh data.
+  DetailCheckpoint copyWith({
+    bool? selesai,
+    String? penanganan,
+    // Gunakan sentinel untuk membedakan "tidak diisi" vs "diisi null"
+    bool clearPenanganan = false,
+  }) {
+    return DetailCheckpoint(
+      id:             id,
+      namaCheckpoint: namaCheckpoint,
+      kondisi:        kondisi,
+      status:         status,
+      catatan:        catatan,
+      fotoBukti:      fotoBukti,
+      waktuLaporan:   waktuLaporan,
+      latitude:       latitude,
+      longitude:      longitude,
+      selesai:        selesai ?? this.selesai,
+      penanganan:     clearPenanganan ? null : (penanganan ?? this.penanganan),
+    );
+  }
 }
 
 // ─── Model Pagination Riwayat ─────────────────────────────────────────────────
@@ -210,6 +250,17 @@ class RiwayatLaporanPaginated {
       );
 
   bool get hasNextPage => currentPage < lastPage;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/// Toleran terhadap bool (dari JSON modern) maupun int 0/1 (MySQL tinyint).
+bool _parseBool(dynamic value) {
+  if (value == null) return false;
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  if (value is String) return value == '1' || value.toLowerCase() == 'true';
+  return false;
 }
 
 List<String> _parseFotoBukti(dynamic rawValue) {

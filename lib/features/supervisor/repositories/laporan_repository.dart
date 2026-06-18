@@ -93,6 +93,41 @@ class LaporanRepository {
         body['data'] as Map<String, dynamic>);
   }
 
+  // ── Update Penanganan Checkpoint ───────────────────────────────────────────
+  /// PATCH /supervisor/laporan/checkpoint/{id}/penanganan
+  Future<Map<String, dynamic>> updatePenanganan({
+  required String token,
+  required int checkpointId,
+  required bool selesai,
+  String? penanganan,
+  }) async {
+    final uri = Uri.parse(
+      '$_base/supervisor/laporan/checkpoint/$checkpointId/penanganan',
+    );
+
+    final res = await http.patch(
+      uri,
+      headers: {
+        ...ApiClient.headers(token: token),
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'selesai'   : selesai,
+        'penanganan': penanganan,
+      }),
+    );
+
+    if (res.statusCode == 422) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(body['message'] ?? 'Validasi gagal');
+    }
+
+    _assertOk(res, 'update penanganan checkpoint');
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return body['data'] as Map<String, dynamic>;
+  }
+
   // ── Helper ─────────────────────────────────────────────────────────────────
   void _assertOk(http.Response res, String konteks) {
     if (res.statusCode != 200) {

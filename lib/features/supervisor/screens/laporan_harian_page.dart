@@ -528,12 +528,16 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
                     }),
                     GestureDetector(
                       onTap: () {
+                        final provider = _provider; // ← ambil langsung dari field state
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DetailPatroliPage(
-                              petugasData: petugas, 
-                            ), 
+                            builder: (_) => ChangeNotifierProvider.value(
+                              value: provider,
+                              child: DetailPatroliPage(
+                                petugasData: petugas,
+                              ),
+                            ),
                           ),
                         );
                       },

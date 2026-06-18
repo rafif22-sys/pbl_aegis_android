@@ -129,6 +129,97 @@ class LaporanProvider extends ChangeNotifier {
     }
   }
 
+  // ── State: Penanganan ──────────────────────────────────────────────────────
+bool _savingPenanganan = false;
+bool get savingPenanganan => _savingPenanganan;
+String? errorPenanganan;
+
+// ──────────────────────────────────────────────────────────────────────────
+// UPDATE PENANGANAN CHECKPOINT
+// ──────────────────────────────────────────────────────────────────────────
+/// Mengirim PATCH ke API, lalu mengupdate [DetailCheckpoint] yang relevan
+/// di dalam [detailHarian] secara lokal menggunakan [copyWith].
+Future<bool> updatePenanganan({
+    required int idAbsensi,
+    required int checkpointId,
+    required bool selesai,
+    String? penanganan,
+  }) async {
+    _savingPenanganan = true;
+    errorPenanganan   = null;
+    notifyListeners();
+
+    try {
+      await _repo.updatePenanganan(
+        token        : token,
+        checkpointId : checkpointId,
+        selesai      : selesai,
+        penanganan   : penanganan,
+      );
+
+      // Update lokal: cari petugas → cari checkpoint → copyWith
+      if (detailHarian != null) {
+        final petugasIndex = detailHarian!.detailPetugas
+            .indexWhere((p) => p.idAbsensi == idAbsensi);
+
+        if (petugasIndex != -1) {
+          final petugas = detailHarian!.detailPetugas[petugasIndex];
+          final cpIndex = petugas.checkpoints
+              .indexWhere((c) => c.id == checkpointId);
+
+          if (cpIndex != -1) {
+            final updated = petugas.checkpoints[cpIndex].copyWith(
+              selesai        : selesai,
+              penanganan     : penanganan,
+              clearPenanganan: penanganan == null,
+            );
+
+            // Buat list checkpoints baru (immutable pattern)
+            final newCheckpoints = List<DetailCheckpoint>.from(petugas.checkpoints)
+              ..[cpIndex] = updated;
+
+            // Rebuild DetailPetugas dengan checkpoints baru
+            final newPetugas = DetailPetugas(
+              idAbsensi      : petugas.idAbsensi,
+              petugas        : petugas.petugas,
+              posJaga        : petugas.posJaga,
+              shift          : petugas.shift,
+              jamMulai       : petugas.jamMulai,
+              jamSelesai     : petugas.jamSelesai,
+              jamMasuk       : petugas.jamMasuk,
+              jamPulang      : petugas.jamPulang,
+              status         : petugas.status,
+              fotoMasuk      : petugas.fotoMasuk,
+              fotoPulang     : petugas.fotoPulang,
+              totalCheckpoint: petugas.totalCheckpoint,
+              checkpoints    : newCheckpoints,
+            );
+
+            // Rebuild detailHarian dengan list petugas baru
+            final newPetugasList =
+                List<DetailPetugas>.from(detailHarian!.detailPetugas)
+                  ..[petugasIndex] = newPetugas;
+
+            detailHarian = LaporanHarianDetail(
+              tanggal      : detailHarian!.tanggal,
+              hari         : detailHarian!.hari,
+              ringkasan    : detailHarian!.ringkasan,
+              detailPetugas: newPetugasList,
+            );
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      errorPenanganan = e.toString();
+      return false;
+    } finally {
+      _savingPenanganan = false;
+      notifyListeners();
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // HELPERS
   // ──────────────────────────────────────────────────────────────────────────
