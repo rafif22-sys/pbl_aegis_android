@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Wajib import Supabase
 import 'laporan_harian_page.dart'; 
 import 'widgets/aegis_top_header.dart';
 
-// --- KELAS UNTUK DATA DUMMY LAPORAN ---
+// --- KELAS UNTUK DATA LAPORAN ---
 class ReportData {
   final String day;
   final String date;
@@ -13,9 +14,9 @@ class ReportData {
   ReportData({
     required this.day,
     required this.date,
-    this.totalPatroli = 10,
-    this.petugas = 24,
-    this.checkpoint = 24,
+    this.totalPatroli = 0,
+    this.petugas = 0,
+    this.checkpoint = 0,
   });
 }
 
@@ -28,21 +29,102 @@ class LaporanPage extends StatefulWidget {
 
 class _LaporanPageState extends State<LaporanPage> {
   DateTime? _selectedDate; 
+  bool _isLoading = true; // Indikator loading saat narik data
+  
+  // List yang tadinya dummy, sekarang dikosongkan untuk diisi dari database
+  List<ReportData> mingguIniData = [];
+  List<ReportData> riwayatData = [];
 
-  // Data Dummy untuk "Minggu Ini"
-  final List<ReportData> mingguIniData = [
-    ReportData(day: 'Jumat', date: '14 April\n2026'),
-    ReportData(day: 'Kamis', date: '13 April\n2026'),
-    ReportData(day: 'Rabu', date: '12 April\n2026'), 
-  ];
+  // Inisialisasi koneksi Supabase
+  final supabase = Supabase.instance.client;
 
-  // Data Dummy untuk "Riwayat Laporan"
-  List<ReportData> riwayatData = [
-    ReportData(day: 'Minggu', date: '12 April\n2026'),
-    ReportData(day: 'Sabtu', date: '11 April\n2026'),
-    ReportData(day: 'Jumat', date: '10 April\n2026'),
-    ReportData(day: 'Kamis', date: '09 April\n2026'), 
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Jalankan fungsi penarikan data saat halaman pertama kali dibuka
+    _fetchLaporanDariSupabase();
+  }
+
+  // --- FUNGSI UTAMA PENARIKAN DATA SUPABASE ---
+  // --- FUNGSI UTAMA PENARIKAN DATA SUPABASE (MURNI DATABASE) ---
+  Future<void> _fetchLaporanDariSupabase() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 1. TARIK DATA ASLI DARI TABEL 'laporan_checkpoint'
+      final List<dynamic> rawData = await supabase
+          .from('laporan_checkpoint')
+          .select('id, id_jadwal_absensi, status, waktu_laporan, point')
+          .order('waktu_laporan', ascending: false);
+
+      // Kosongkan list setiap kali fetch ulang agar tidak ada data nyangkut
+      mingguIniData = [];
+      riwayatData = [];
+
+      // 2. JIKA ADA DATA (Setelah kamu tes absen/patroli)
+      if (rawData.isNotEmpty) {
+        // Logika untuk mengelompokkan data berdasarkan Tanggal
+        Map<String, List<dynamic>> groupedByDate = {};
+        
+        for (var row in rawData) {
+          // Ambil tanggal (YYYY-MM-DD) dari waktu_laporan atau created_at
+          String rawDate = row['waktu_laporan'] ?? row['created_at'];
+          DateTime parsedDate = DateTime.parse(rawDate);
+          String dateKey = '${parsedDate.year}-${parsedDate.month.toString().padLeft(2, '0')}-${parsedDate.day.toString().padLeft(2, '0')}';
+          
+          if (!groupedByDate.containsKey(dateKey)) {
+            groupedByDate[dateKey] = [];
+          }
+          groupedByDate[dateKey]!.add(row);
+        }
+
+        // 3. MAPPING DATA ASLI KE UI
+        List<ReportData> realReports = [];
+        groupedByDate.forEach((dateKey, rows) {
+          DateTime dateObj = DateTime.parse(dateKey);
+          
+          // Hitung unik sesi patroli berdasarkan id_jadwal_absensi
+          Set<String> uniquePatrols = {};
+          for (var r in rows) {
+            if (r['id_jadwal_absensi'] != null) {
+              uniquePatrols.add(r['id_jadwal_absensi'].toString());
+            }
+          }
+
+          realReports.add(ReportData(
+            day: _getDayName(dateObj.weekday), 
+            date: '${dateObj.day} ${_getMonthName(dateObj.month)}\n${dateObj.year}',
+            totalPatroli: uniquePatrols.length, // Total sesi patroli aktif hari itu
+            petugas: uniquePatrols.length, // Asumsi 1 sesi = 1 petugas
+            checkpoint: rows.length, // Total semua checkpoint yang di-scan hari itu
+          ));
+        });
+
+        // Pisahkan 3 teratas ke "Minggu Ini", sisanya ke "Riwayat"
+        mingguIniData = realReports.take(3).toList();
+        riwayatData = realReports.skip(3).toList();
+      }
+
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil data dari Supabase: $error')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false; 
+      });
+    }
+  }
+
+  // Fungsi tambahan untuk menerjemahkan angka hari menjadi nama hari
+  String _getDayName(int weekday) {
+    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    return days[weekday - 1];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,28 +137,37 @@ class _LaporanPageState extends State<LaporanPage> {
             const AegisTopHeader(),
             _buildTitleBar(context),
             
-            _buildSectionTitle('Minggu Ini'),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
-                itemCount: mingguIniData.length,
-                itemBuilder: (context, index) {
-                  return _buildReportCard(mingguIniData[index]);
-                },
+            // Tampilkan animasi loading berputar jika data masih ditarik
+            if (_isLoading)
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFF0D47A1)),
+                ),
+              )
+            else ...[
+              _buildSectionTitle('Minggu Ini'),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 16),
+                  itemCount: mingguIniData.length,
+                  itemBuilder: (context, index) {
+                    return _buildReportCard(mingguIniData[index]);
+                  },
+                ),
               ),
-            ),
 
-            _buildSectionTitle('Riwayat Laporan'),
-            _buildSearchBar(context),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
-                itemCount: riwayatData.length,
-                itemBuilder: (context, index) {
-                  return _buildReportCard(riwayatData[index]);
-                },
+              _buildSectionTitle('Riwayat Laporan'),
+              _buildSearchBar(context),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 16),
+                  itemCount: riwayatData.length,
+                  itemBuilder: (context, index) {
+                    return _buildReportCard(riwayatData[index]);
+                  },
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -156,7 +247,6 @@ class _LaporanPageState extends State<LaporanPage> {
     );
   }
 
-  // --- WIDGET KARTU LAPORAN YANG SUDAH DIPERBAIKI ---
   Widget _buildReportCard(ReportData data) {
     return GestureDetector(
       onTap: () {

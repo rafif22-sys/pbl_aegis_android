@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'widgets/aegis_top_header.dart';
 
-// --- KELAS DATA DUMMY CHECKPOINT ---
 class CheckpointData {
   final String title;
   final String time;
@@ -18,67 +18,77 @@ class CheckpointData {
   });
 }
 
-class DetailPatroliPage extends StatelessWidget {
+class DetailPatroliPage extends StatefulWidget {
+  final String idJadwalAbsensi;
   final String namaPetugas;
 
-  DetailPatroliPage({super.key, required this.namaPetugas});
+  const DetailPatroliPage({super.key, required this.idJadwalAbsensi, required this.namaPetugas});
 
-  // Data Dummy untuk List Titik Checkpoint (Dibuat sampai 5 agar bisa discroll)
-  final List<CheckpointData> checkpoints = [
-    CheckpointData(
-      title: 'Titik 1',
-      time: '07.30',
-      condition: 'Aman',
-      note: 'Keadaan aman dan gembok terpasang',
-      imageUrls: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60'],
-    ),
-    CheckpointData(
-      title: 'Titik 2',
-      time: '08.30',
-      condition: 'Aman',
-      note: 'Keadaan aman dan gembok terpasang',
-      imageUrls: [
-        'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-    ),
-    CheckpointData(
-      title: 'Titik 3',
-      time: '09.00',
-      condition: 'Terdapat Isu',
-      note: 'Ada coretan di dinding belakang',
-      imageUrls: ['https://images.unsplash.com/photo-1515263487990-61b07816b324?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60'],
-    ),
-    CheckpointData(
-      title: 'Titik 4',
-      time: '09.45',
-      condition: 'Aman',
-      note: 'Pintu gerbang samping terkunci rapat',
-      imageUrls: ['https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60'],
-    ),
-    CheckpointData(
-      title: 'Titik 5',
-      time: '10.30',
-      condition: 'Aman',
-      note: 'Patroli selesai, semua area terpantau aman',
-      imageUrls: ['https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60'],
-    ),
-  ];
+  @override
+  State<DetailPatroliPage> createState() => _DetailPatroliPageState();
+}
+
+class _DetailPatroliPageState extends State<DetailPatroliPage> {
+  bool _isLoading = true;
+  List<CheckpointData> checkpoints = [];
+  final supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetailPatroli();
+  }
+
+  Future<void> _fetchDetailPatroli() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final List<dynamic> data = await supabase
+          .from('laporan_checkpoint')
+          .select()
+          .eq('id_jadwal_absensi', widget.idJadwalAbsensi)
+          .order('waktu_laporan', ascending: true); // Urut dari checkpoint pertama
+
+      checkpoints = data.map((row) {
+        DateTime waktu = DateTime.parse(row['waktu_laporan'] ?? row['created_at']);
+        String jam = '${waktu.hour.toString().padLeft(2, '0')}:${waktu.minute.toString().padLeft(2, '0')}';
+        
+        // Handle foto bukti (bisa null)
+        List<String> fotos = [];
+        if (row['foto_bukti'] != null && row['foto_bukti'].toString().isNotEmpty) {
+          fotos.add(row['foto_bukti'].toString());
+        } else {
+          // Placeholder kalau petugas ngga upload foto
+          fotos.add('https://images.unsplash.com/photo-1555861496-faa3eaf591fc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60'); 
+        }
+
+        return CheckpointData(
+          title: 'Titik ${row['point'] ?? '-'}',
+          time: jam,
+          condition: row['kondisi'] ?? 'Aman',
+          note: row['catatan'] ?? 'Tidak ada catatan.',
+          imageUrls: fotos,
+        );
+      }).toList();
+
+    } catch (e) {
+      debugPrint("Error fetching detail: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE4F0FB), // Background biru muda
+      backgroundColor: const Color(0xFFE4F0FB), 
       body: SafeArea(
-        child: Column( // Bagian utama tetap Column
+        child: Column( 
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const AegisTopHeader(),
-            
-            // --- BAGIAN FIXED (TIDAK IKUT DI-SCROLL) ---
             _buildTitleBar(context),
             
-            // Peta Rute Patroli
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               height: 250,
@@ -87,26 +97,26 @@ class DetailPatroliPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 color: Colors.grey.shade300,
                 image: const DecorationImage(
-                  image: NetworkImage('https://images.unsplash.com/photo-1524661135-423995f22d0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'), // Placeholder Peta
+                  image: NetworkImage('https://images.unsplash.com/photo-1524661135-423995f22d0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'), 
                   fit: BoxFit.cover,
                 ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
               ),
             ),
             const SizedBox(height: 8),
 
-            // --- BAGIAN LIST YANG BISA DI-SCROLL ---
-            // Menggunakan Expanded agar list mengambil sisa layar di bawah peta
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(top: 8, bottom: 30), // Beri jarak bawah agar tidak mentok
-                itemCount: checkpoints.length,
-                itemBuilder: (context, index) {
-                  return _buildCheckpointCard(context, checkpoints[index]);
-                },
-              ),
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF0D47A1)))
+                : checkpoints.isEmpty 
+                  ? const Center(child: Text("Belum ada data checkpoint.", style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(top: 8, bottom: 30), 
+                      itemCount: checkpoints.length,
+                      itemBuilder: (context, index) {
+                        return _buildCheckpointCard(context, checkpoints[index]);
+                      },
+                    ),
             ),
           ],
         ),
@@ -114,16 +124,12 @@ class DetailPatroliPage extends StatelessWidget {
     );
   }
 
-  // --- WIDGET JUDUL & NAMA PETUGAS ---
   Widget _buildTitleBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, size: 28, color: Colors.black),
-          ),
+          InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, size: 28, color: Colors.black)),
           const SizedBox(width: 16),
           CircleAvatar(radius: 18, backgroundColor: Colors.grey.shade300),
           const SizedBox(width: 12),
@@ -131,7 +137,7 @@ class DetailPatroliPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Petugas', style: TextStyle(fontSize: 14, color: Color(0xFF0D47A1), fontWeight: FontWeight.bold)),
-              Text(namaPetugas, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(widget.namaPetugas, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
             ],
           ),
         ],
@@ -139,7 +145,6 @@ class DetailPatroliPage extends StatelessWidget {
     );
   }
 
-  // --- WIDGET KARTU TITIK CHECKPOINT ---
   Widget _buildCheckpointCard(BuildContext context, CheckpointData data) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 24, right: 24),
@@ -152,7 +157,6 @@ class DetailPatroliPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Bagian Teks (Kiri)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,11 +169,7 @@ class DetailPatroliPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F9FA),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
+                  decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -184,7 +184,6 @@ class DetailPatroliPage extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           
-          // Bagian Thumbnail Foto (Kanan)
           GestureDetector(
             onTap: () => _showImageDialog(context, data.imageUrls),
             child: Container(
@@ -192,10 +191,7 @@ class DetailPatroliPage extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: NetworkImage(data.imageUrls[0]), 
-                  fit: BoxFit.cover,
-                ),
+                image: DecorationImage(image: NetworkImage(data.imageUrls[0]), fit: BoxFit.cover),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
               ),
               child: data.imageUrls.length > 1 
@@ -215,7 +211,6 @@ class DetailPatroliPage extends StatelessWidget {
     );
   }
 
-  // --- LOGIKA POP-UP FOTO (LIGHTBOX) ---
   void _showImageDialog(BuildContext context, List<String> imageUrls) {
     PageController pageController = PageController();
 
@@ -251,9 +246,7 @@ class DetailPatroliPage extends StatelessWidget {
                         child: PageView.builder(
                           controller: pageController,
                           itemCount: imageUrls.length,
-                          onPageChanged: (index) {
-                            setStateDialog(() {}); 
-                          },
+                          onPageChanged: (index) => setStateDialog(() {}),
                           itemBuilder: (context, index) {
                             return Image.network(imageUrls[index], fit: BoxFit.cover);
                           },
@@ -269,18 +262,14 @@ class DetailPatroliPage extends StatelessWidget {
                           IconButton(
                             icon: Icon(Icons.arrow_back_ios, color: currentIndex > 0 ? Colors.black : Colors.grey),
                             onPressed: () {
-                              if (currentIndex > 0) {
-                                pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-                              }
+                              if (currentIndex > 0) pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
                             },
                           ),
                           Text('${currentIndex + 1}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           IconButton(
                             icon: Icon(Icons.arrow_forward_ios, color: currentIndex < imageUrls.length - 1 ? Colors.black : Colors.grey),
                             onPressed: () {
-                              if (currentIndex < imageUrls.length - 1) {
-                                pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-                              }
+                              if (currentIndex < imageUrls.length - 1) pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
                             },
                           ),
                         ],
