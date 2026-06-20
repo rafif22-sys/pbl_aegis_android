@@ -13,12 +13,13 @@ class AbsensiModel {
   final String? jamPulang;
   final String? fotoMasuk;
   final String? fotoPulang;
-  final RuteInfo? rute;          // ← dari String? menjadi RuteInfo?
+  final RuteInfo? rute;
   final bool bolehAbsenMasuk;
   final bool bolehAbsenPulang;
   final String waktuBukaMasuk;
   final String waktuBukaPulang;
   final String batasPulang;
+  final bool pulangCepat;          // ← tambah
 
   AbsensiModel({
     required this.idJadwalAbsensi,
@@ -41,25 +42,25 @@ class AbsensiModel {
     required this.waktuBukaMasuk,
     required this.waktuBukaPulang,
     required this.batasPulang,
+    this.pulangCepat = false,      // ← tambah, default false
   });
 
   factory AbsensiModel.fromJson(Map<String, dynamic> json) {
     return AbsensiModel(
       idJadwalAbsensi:  json['id_jadwal_absensi'],
-      tanggal:          json['tanggal']    ?? '',
-      hari:             json['hari']       ?? '',
-      posJaga:          json['pos_jaga']   ?? '-',
+      tanggal:          json['tanggal']     ?? '',
+      hari:             json['hari']        ?? '',
+      posJaga:          json['pos_jaga']    ?? '-',
       posJagaLat:       (json['pos_jaga_lat'] as num?)?.toDouble(),
       posJagaLng:       (json['pos_jaga_lng'] as num?)?.toDouble(),
-      namaShift:        json['nama_shift'] ?? '-',
-      jamMulai:         json['jam_mulai']  ?? '-',
+      namaShift:        json['nama_shift']  ?? '-',
+      jamMulai:         json['jam_mulai']   ?? '-',
       jamSelesai:       json['jam_selesai'] ?? '-',
-      status:           json['status']     ?? 'menunggu',
+      status:           json['status']      ?? 'menunggu',
       jamMasuk:         json['jam_masuk'],
       jamPulang:        json['jam_pulang'],
       fotoMasuk:        json['foto_masuk'],
       fotoPulang:       json['foto_pulang'],
-      // parse object {id, nama_rute, jumlah_checkpoint} — null jika belum ada rute
       rute: json['rute'] != null && json['rute'] is Map
           ? RuteInfo.fromJson(json['rute'] as Map<String, dynamic>)
           : null,
@@ -68,6 +69,7 @@ class AbsensiModel {
       waktuBukaMasuk:   json['waktu_buka_masuk']   ?? '-',
       waktuBukaPulang:  json['waktu_buka_pulang']  ?? '-',
       batasPulang:      json['batas_pulang']        ?? '-',
+      pulangCepat:      json['pulang_cepat'] as bool? ?? false,  // ← tambah
     );
   }
 
@@ -89,9 +91,9 @@ class RuteInfo {
   });
 
   factory RuteInfo.fromJson(Map<String, dynamic> json) => RuteInfo(
-        id:                json['id']                as int,
-        namaRute:          json['nama_rute']         as String,
-        jumlahCheckpoint:  json['jumlah_checkpoint'] as int? ?? 0,
-        jumlahDilaporkan:  json['jumlah_dilaporkan'] as int? ?? 0,
+        id:               json['id']                as int,
+        namaRute:         json['nama_rute']         as String,
+        jumlahCheckpoint: json['jumlah_checkpoint'] as int? ?? 0,
+        jumlahDilaporkan: json['jumlah_dilaporkan'] as int? ?? 0,
       );
 }

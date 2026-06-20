@@ -1,57 +1,29 @@
+// lib/features/warga/models/laporan_patroli_model.dart
+
+/// Model ringkasan harian dari endpoint GET /warga/laporan-patroli
+/// Response: { tanggal, hari, total_patroli, total_petugas, total_checkpoint }
 class LaporanPatroliModel {
-  final int id;
   final String tanggal;
-  final String shift;
+  final String hari;
+  final int totalPatroli;
   final int totalPetugas;
   final int totalCheckpoint;
-  final String status;
-  final List<PetugasLaporan> petugasList;
 
-  LaporanPatroliModel({
-    required this.id,
+  const LaporanPatroliModel({
     required this.tanggal,
-    required this.shift,
+    required this.hari,
+    required this.totalPatroli,
     required this.totalPetugas,
     required this.totalCheckpoint,
-    required this.status,
-    required this.petugasList,
   });
 
   factory LaporanPatroliModel.fromJson(Map<String, dynamic> json) {
     return LaporanPatroliModel(
-      id: json['id'],
-      tanggal: json['tanggal'],
-      shift: json['shift'],
-      totalPetugas: json['total_petugas'],
-      totalCheckpoint: json['total_checkpoint'],
-      status: json['status'],
-      petugasList: (json['petugas'] as List?)
-              ?.map((e) => PetugasLaporan.fromJson(e))
-              .toList() ??
-          [],
-    );
-  }
-}
-
-class PetugasLaporan {
-  final String nama;
-  final String waktu;
-  final int checkpointDicapai;
-  final bool aman;
-
-  PetugasLaporan({
-    required this.nama,
-    required this.waktu,
-    required this.checkpointDicapai,
-    required this.aman,
-  });
-
-  factory PetugasLaporan.fromJson(Map<String, dynamic> json) {
-    return PetugasLaporan(
-      nama: json['nama'],
-      waktu: json['waktu'],
-      checkpointDicapai: json['checkpoint_dicapai'],
-      aman: json['aman'],
+      tanggal:          json['tanggal']          as String,
+      hari:            (json['hari']             as String?) ?? '',
+      totalPatroli:    (json['total_patroli']    as num?)?.toInt() ?? 0,
+      totalPetugas:    (json['total_petugas']    as num?)?.toInt() ?? 0,
+      totalCheckpoint: (json['total_checkpoint'] as num?)?.toInt() ?? 0,
     );
   }
 }

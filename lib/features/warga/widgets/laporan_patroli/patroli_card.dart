@@ -1,3 +1,5 @@
+// lib/features/warga/widgets/laporan_patroli/patroli_card.dart
+
 import 'package:flutter/material.dart';
 import '../../models/laporan_patroli_model.dart';
 
@@ -13,7 +15,6 @@ class PatroliCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAman = laporan.status.toLowerCase() == 'aman';
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -31,14 +32,13 @@ class PatroliCard extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // ── Header: Hari + Total Checkpoint ──
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: isAman
-                    ? const Color(0xFF4caf50)
-                    : const Color(0xFFd32f2f),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0D47A1),
+                borderRadius: BorderRadius.only(
+                  topLeft:  Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
               ),
@@ -46,7 +46,7 @@ class PatroliCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    laporan.status,
+                    laporan.hari.isNotEmpty ? laporan.hari : 'Patroli',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -64,6 +64,8 @@ class PatroliCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Body: Ikon + Statistik ──
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -71,18 +73,22 @@ class PatroliCard extends StatelessWidget {
                   Container(
                     width: 50,
                     height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0D47A1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person, color: Colors.white),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 15),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Shift: ${laporan.shift}',
+                        '${laporan.totalPatroli} Patroli',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -90,7 +96,8 @@ class PatroliCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${laporan.totalPetugas} Petugas',
+                        '${laporan.totalPetugas} Petugas · '
+                        '${laporan.totalCheckpoint} Checkpoint',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Colors.black54,
@@ -101,6 +108,8 @@ class PatroliCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Footer: Tanggal + Link Detail ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(

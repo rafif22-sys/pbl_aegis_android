@@ -338,6 +338,12 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
   // ── KONTEN UTAMA ───────────────────────────────────────────────────────────
   Widget _buildKonten() {
     final a = _absensi!;
+    final sudahMulaiPatroli = (a.rute?.jumlahDilaporkan ?? 0) > 0;
+    final tampilkanSesiPatroli = a.sudahMasuk
+        && a.rute != null
+        && a.status != 'alpha'
+        && !(a.pulangCepat && !sudahMulaiPatroli);   
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -346,7 +352,7 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
         _buildTombolMasuk(a),
         const SizedBox(height: 12),
         _buildTombolPulang(a),
-        if (a.sudahMasuk && a.rute != null && a.status != 'alpha') ...[
+        if (tampilkanSesiPatroli) ...[         
           const SizedBox(height: 20),
           _buildSesiPatroli(a),
         ],
@@ -716,7 +722,6 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                       )),
                   const SizedBox(height: 4),
                   Text(
-                    // ✅ Pesan dinamis sesuai instruksi Anda
                     a.sudahMasuk
                         ? 'Anda tidak melakukan presensi pulang'
                         : 'Anda tidak melakukan presensi masuk dan pulang',
@@ -808,7 +813,9 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                   Text(
                     sudah
                         ? (a.jamPulang ?? '-')
-                        : 'Buka jam ${a.waktuBukaPulang} – ${a.batasPulang}',
+                        : a.pulangCepat
+                            ? 'Pulang cepat diizinkan ⚡'           // ← teks khusus pulang cepat
+                            : 'Buka jam ${a.waktuBukaPulang} – ${a.batasPulang}',
                     style: TextStyle(
                       color: sudah
                           ? const Color(0xFF16A34A)
