@@ -8,6 +8,8 @@ class DetailAbsensiPage extends StatelessWidget {
   final String waktu;
   final String pos;
   final String status;
+  final String? fotoAbsensiMasuk;
+  final String? fotoAbsensiPulang;
 
   const DetailAbsensiPage({
     super.key,
@@ -17,11 +19,13 @@ class DetailAbsensiPage extends StatelessWidget {
     required this.waktu,
     required this.pos,
     required this.status,
+    this.fotoAbsensiMasuk,
+    this.fotoAbsensiPulang,
   });
 
   @override
   Widget build(BuildContext context) {
-    // --- LOGIKA DINAMIS BERDASARKAN STATUS ---
+    // --- LOGIKA DINAMIS BERDASARKAN STATUS & DATA ASLI JADWAL_PAGE ---
     String masukWaktu = '--:--';
     String masukDesc = 'Belum absen';
     Color masukBgColor = Colors.grey.shade400;
@@ -30,37 +34,52 @@ class DetailAbsensiPage extends StatelessWidget {
     String pulangDesc = 'Belum absen';
     Color pulangBgColor = Colors.grey.shade400;
 
-    String? fotoMasukUrl;
-    String? fotoPulangUrl;
+    // Mengambil URL foto asli yang dikirim dari jadwal_page.dart
+    String? fotoMasukUrl = fotoAbsensiMasuk;
+    String? fotoPulangUrl = fotoAbsensiPulang;
 
     bool isRadiusAman = false;
 
-    if (status == 'HADIR') {
-      masukWaktu = '07:55';
-      masukDesc = '5 menit awal';
-      masukBgColor = const Color(0xFF6FCF73); // Hijau
+    // Normalisasi string status agar tidak sensitif huruf besar/kecil
+    final normalizedStatus = status.toUpperCase().trim();
+
+    if (normalizedStatus == 'HADIR') {
+      // Jika hadir, ambil jam dari range waktu string (contoh: "08:00 - 16:00" diambil "08:00" dan "16:00")
+      final parts = waktu.split('-');
+      masukWaktu = parts.isNotEmpty ? parts[0].trim() : '08:00';
+      masukDesc = 'Tepat waktu';
+      masukBgColor = const Color(0xFF73C87D); // PERBAIKAN: Menggunakan warna hijau ijo tau figma (#73C87D)
       
-      pulangWaktu = '16:05';
+      pulangWaktu = parts.length > 1 ? parts[1].trim() : '16:00';
       pulangDesc = 'Tepat waktu';
       pulangBgColor = const Color(0xFFFF6B6B); // Merah
       
-      fotoMasukUrl = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';
-      fotoPulangUrl = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';
       isRadiusAman = true;
-    } else if (status == 'TERLAMBAT') {
-      masukWaktu = '08:20';
-      masukDesc = '20 menit telat';
+    } else if (normalizedStatus == 'TERLAMBAT') {
+      // Simulasi jam masuk jika terlambat, atau mengambil dari database jika tersedia
+      masukWaktu = '08:20'; 
+      masukDesc = 'Terlambat';
       masukBgColor = const Color(0xFFFFA726); // Oranye
       
       pulangWaktu = '--:--';
       pulangDesc = 'Shift belum selesai';
       pulangBgColor = Colors.grey.shade400; // Abu-abu
       
-      fotoMasukUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';
-      fotoPulangUrl = null; // Belum ada foto pulang
       isRadiusAman = true;
+    } else if (normalizedStatus == 'ALPHA') {
+      masukWaktu = '--:--';
+      masukDesc = 'Tidak Hadir';
+      masukBgColor = const Color(0xFFD61D1D); // Merah Tua/Alpha
+      
+      pulangWaktu = '--:--';
+      pulangDesc = 'Tidak Hadir';
+      pulangBgColor = const Color(0xFFD61D1D);
+      isRadiusAman = false;
     } else {
       // Status MENUNGGU
+      masukWaktu = '--:--';
+      masukDesc = 'Menunggu absensi';
+      masukBgColor = const Color(0xFF1969C9); // Biru Aegis
       isRadiusAman = false;
     }
 
@@ -80,7 +99,10 @@ class DetailAbsensiPage extends StatelessWidget {
                     // NAMA PETUGAS
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(nama, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1))),
+                      child: Text(
+                        nama, 
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -277,7 +299,7 @@ class DetailAbsensiPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
           const SizedBox(height: 4),
-          Text(time, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+          Text(time, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
           const SizedBox(height: 4),
           Text(desc, style: const TextStyle(color: Colors.white70, fontSize: 11)),
         ],
@@ -294,22 +316,51 @@ class DetailAbsensiPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.grey.shade300,
             borderRadius: BorderRadius.circular(16),
-            image: imageUrl != null
-                ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
-                : null,
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))],
           ),
-          child: imageUrl != null
-              ? const Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: imageUrl != null && imageUrl.isNotEmpty
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.broken_image_outlined, size: 40, color: Colors.grey),
+                        ),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                        },
+                      ),
+                      const Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                        ),
+                      )
+                    ],
+                  )
+                : const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_off_outlined, size: 40, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Text(
+                          'Belum Ada Foto',
+                          style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
-                )
-              : const Center(
-                  child: Icon(Icons.person_off_outlined, size: 40, color: Colors.grey),
-                ), // Tampilan kalau foto belum ada
+          ),
         ),
         const SizedBox(height: 12),
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF475569), fontSize: 12)),
