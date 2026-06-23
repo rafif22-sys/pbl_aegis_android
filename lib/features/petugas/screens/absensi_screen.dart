@@ -686,7 +686,12 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
   Widget _buildTombolPulang(AbsensiModel a) {
     final sudah  = a.sudahPulang;
     final boleh  = a.bolehAbsenPulang;
-    final aktif  = boleh && !sudah && a.sudahMasuk;
+    
+    // Cek apakah patroli sudah selesai
+    final bool patroliSelesai = a.rute == null || (a.rute!.jumlahDilaporkan >= a.rute!.jumlahCheckpoint);
+    final bool belumSelesaiPatroli = !patroliSelesai && !a.pulangCepat;
+    
+    final aktif  = boleh && !sudah && a.sudahMasuk && !belumSelesaiPatroli;
     final isAlpha = a.status == 'alpha'; 
 
   
@@ -738,7 +743,11 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
     }
 
     return GestureDetector(
-      onTap: aktif ? _onAbsenPulang : null,
+      onTap: aktif ? _onAbsenPulang : () {
+        if (belumSelesaiPatroli && !sudah) {
+          _showError('Selesaikan sesi patroli Anda terlebih dahulu sebelum absen pulang.');
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -813,9 +822,11 @@ class _AbsensiScreenState extends State<AbsensiScreen> {
                   Text(
                     sudah
                         ? (a.jamPulang ?? '-')
-                        : a.pulangCepat
-                            ? 'Pulang cepat diizinkan ⚡'           // ← teks khusus pulang cepat
-                            : 'Buka jam ${a.waktuBukaPulang} – ${a.batasPulang}',
+                        : belumSelesaiPatroli
+                            ? 'Selesaikan patroli terlebih dahulu'
+                            : a.pulangCepat
+                                ? 'Pulang cepat diizinkan ⚡'
+                                : 'Buka jam ${a.waktuBukaPulang} – ${a.batasPulang}',
                     style: TextStyle(
                       color: sudah
                           ? const Color(0xFF16A34A)

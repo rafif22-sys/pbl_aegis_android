@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'widgets/aegis_top_header.dart';
+import '../widgets/aegis_top_header.dart';
 
 class TentangAplikasiPage extends StatelessWidget {
   const TentangAplikasiPage({super.key});

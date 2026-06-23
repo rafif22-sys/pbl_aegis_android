@@ -4,8 +4,8 @@ import 'daftar_petugas_page.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'widgets/aegis_top_header.dart';
 import 'data_diri_screen.dart';
-import 'keamanan_page.dart';
-import 'tentang_aplikasi_page.dart';
+import '../../../core/screens/keamanan_page.dart';
+import '../../../core/screens/tentang_aplikasi_page.dart';
 
 class ProfilPage extends StatelessWidget {
   const ProfilPage({super.key});

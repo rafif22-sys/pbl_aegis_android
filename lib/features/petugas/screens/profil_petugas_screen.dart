@@ -4,6 +4,8 @@ import '../../../core/widgets/aegis_top_header.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'data_diri_petugas_screen.dart';
+import '../../../core/screens/keamanan_page.dart';
+import '../../../core/screens/tentang_aplikasi_page.dart';
 
 class ProfilPetugasScreen extends StatelessWidget {
   const ProfilPetugasScreen({super.key});
@@ -114,12 +116,26 @@ class ProfilPetugasScreen extends StatelessWidget {
             },
           ),
           _buildDivider(),
-          _buildMenuItem(icon: Icons.lock, title: 'Keamanan', onTap: () {}),
+          _buildMenuItem(
+            icon: Icons.lock, 
+            title: 'Keamanan', 
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KeamananPage()),
+              );
+            }
+          ),
           _buildDivider(),
           _buildMenuItem(
             icon: Icons.info_outline,
             title: 'Tentang Aplikasi',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TentangAplikasiPage()),
+              );
+            },
           ),
         ],
       ),

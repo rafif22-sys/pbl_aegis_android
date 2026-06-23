@@ -195,14 +195,14 @@ class NotificationService {
     }
 
     final type   = msg.data['type'] ?? '';
-    final isInfo = type == 'informasi_baru';
+    final isSos  = type == 'sos_baru';
 
-    final channelId   = isInfo ? _infoChannelId : _channelId;
-    final channelName = isInfo ? _infoChannelName : _channelName;
+    final channelId   = isSos ? _channelId : _infoChannelId;
+    final channelName = isSos ? _channelName : _infoChannelName;
 
-    final id      = isInfo ? msg.data['informasi_id'] : msg.data['sos_id'];
-    final notifId = id != null ? int.tryParse(id) ?? title.hashCode : title.hashCode;
-    final payload = isInfo ? 'info:$id' : 'sos:$id';
+    final id      = isSos ? msg.data['sos_id'] : (msg.data['informasi_id'] ?? title.hashCode.toString());
+    final notifId = id != null ? int.tryParse(id.toString()) ?? title.hashCode : title.hashCode;
+    final payload = isSos ? 'sos:$id' : (type == 'informasi_baru' ? 'info:$id' : 'absen:$id');
 
     await _localNotif.show(
       notifId,
@@ -212,17 +212,17 @@ class NotificationService {
         android: AndroidNotificationDetails(
           channelId,
           channelName,
-          importance: isInfo ? Importance.high : Importance.max,
-          priority: isInfo ? Priority.defaultPriority : Priority.high,
+          importance: isSos ? Importance.max : Importance.high,
+          priority: !isSos ? Priority.defaultPriority : Priority.high,
           icon: 'ic_notif_color',
           color: const Color(0xFF142940),
-          sound: isInfo
+          sound: !isSos
               ? null
               : const RawResourceAndroidNotificationSound('sirine'),
           playSound: true,
           enableVibration: true,
-          vibrationPattern: isInfo ? null : _vibrationPattern,
-          fullScreenIntent: !isInfo,
+          vibrationPattern: !isSos ? null : _vibrationPattern,
+          fullScreenIntent: isSos,
         ),
       ),
       payload: payload,

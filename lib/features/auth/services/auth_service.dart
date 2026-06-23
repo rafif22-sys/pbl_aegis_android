@@ -99,6 +99,26 @@ class AuthService {
     return user;
   }
 
+  // ── Update Password ────────────────────────────────────
+  static Future<Map<String, dynamic>> updatePassword(
+    String token,
+    String currentPassword,
+    String newPassword,
+    String newPasswordConfirmation,
+  ) async {
+    final response = await http.post(
+      Uri.parse('${ApiClient.baseUrl}/auth/update-password'),
+      headers: ApiClient.headers(token: token),
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'password': newPassword,
+        'password_confirmation': newPasswordConfirmation,
+      }),
+    ).timeout(const Duration(seconds: 10));
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── Logout ─────────────────────────────────────────────
   static Future<void> logout(String token) async {
     try {

@@ -9,12 +9,6 @@ import 'package:provider/provider.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/services/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-
-import '../../../core/config/app_config.dart';
-import '../../../core/services/api_client.dart';
-import '../../auth/providers/auth_provider.dart';
 import 'detail_absensi_page.dart';
 import 'widgets/aegis_top_header.dart';
 
@@ -22,11 +16,9 @@ import 'widgets/aegis_top_header.dart';
 
 class JadwalData {
   final int? id;
-  final int? id;
   final String nama;
   final String pos;
   final String tanggal;
-  final String hari;
   final String hari;
   final String shift;
   final String waktu;
@@ -39,12 +31,9 @@ class JadwalData {
 
   const JadwalData({
     this.id,
-  const JadwalData({
-    this.id,
     required this.nama,
     required this.pos,
     required this.tanggal,
-    required this.hari,
     required this.hari,
     required this.shift,
     required this.waktu,
@@ -368,7 +357,6 @@ class _JadwalPageState extends State<JadwalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
