@@ -161,25 +161,14 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
     );
   }
 
-  // --- WIDGET JUDUL HALAMAN ---
   Widget _buildTitleBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, size: 28, color: Colors.black),
-          ),
+          InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, size: 28, color: Colors.black)),
           const SizedBox(width: 16),
-          const Text(
-            'Laporan Harian',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
+          const Text('Laporan Harian', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
         ],
       ),
     );
@@ -195,13 +184,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -254,41 +237,22 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
     );
   }
 
-  Widget _buildSummaryItem(
-    String value,
-    String label,
-    IconData icon,
-    Color bgColor, {
-    Color iconColor = Colors.black54,
-  }) {
+  Widget _buildSummaryItem(String value, String label, IconData icon, Color bgColor, {Color iconColor = Colors.black54}) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
               Icon(icon, size: 20, color: iconColor),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );
@@ -338,23 +302,10 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
           decoration: BoxDecoration(
             color: isActive ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                    ),
-                  ]
-                : [],
+            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
           ),
           child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? Colors.black : Colors.grey.shade700,
-              ),
-            ),
+            child: Text(label, style: TextStyle(fontWeight: isActive ? FontWeight.bold : FontWeight.w500, color: isActive ? Colors.black : Colors.grey.shade700)),
           ),
         ),
       ),
@@ -408,17 +359,10 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
-          // Banner Atas (Status & Checkpoint)
           Container(
             height: 36,
             decoration: const BoxDecoration(
@@ -436,10 +380,7 @@ class _LaporanHarianPageState extends State<LaporanHarianPage> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: statusColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
                     ),
                     child: Text(
                       status,

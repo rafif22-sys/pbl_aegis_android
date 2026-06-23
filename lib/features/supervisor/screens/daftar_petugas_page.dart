@@ -1,15 +1,61 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+
+import '../../../core/config/app_config.dart';
+import '../../../core/services/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'detail_petugas_page.dart';
 import 'widgets/aegis_top_header.dart';
 
-// Model data petugas
 class PetugasData {
   final String nama;
   final String id;
   final String masaKerja;
   final String imgUrl;
+  final Map<String, dynamic> rawData; // 👈 Tambahan untuk bawa data lengkap
 
-  PetugasData({required this.nama, required this.id, required this.masaKerja, required this.imgUrl});
+  PetugasData({
+    required this.nama,
+    required this.id,
+    required this.masaKerja,
+    required this.imgUrl,
+    required this.rawData,
+  });
+
+  factory PetugasData.fromJson(Map<String, dynamic> json) {
+    // ... (Logika URL foto tetap sama seperti sebelumnya) ...
+    String rawFoto = json['foto_profil']?.toString() ?? '';
+    String fotoUrl = 'https://ui-avatars.com/api/?name=${json['nama'] ?? 'P'}';
+    
+    if (rawFoto.isNotEmpty) {
+      String resolved = rawFoto
+          .replaceAll('http://127.0.0.1:54321', AppConfig.supabaseUrl)
+          .replaceAll('http://localhost:54321', AppConfig.supabaseUrl);
+      if (resolved.startsWith('http')) {
+        fotoUrl = resolved;
+      } else {
+        String cleaned = resolved.startsWith('/') ? resolved.substring(1) : resolved;
+        fotoUrl = '${AppConfig.supabaseUrl}/storage/v1/object/public/${AppConfig.supabaseBucket}/$cleaned';
+      }
+    }
+
+    String masaKerjaText = 'Masa kerja : Baru';
+    if (json['tanggal_bergabung'] != null) {
+       int tahunMasuk = int.tryParse(json['tanggal_bergabung'].toString().substring(0, 4)) ?? DateTime.now().year;
+       int masa = DateTime.now().year - tahunMasuk;
+       masaKerjaText = masa > 0 ? 'Masa kerja : $masa Tahun' : 'Masa kerja : < 1 Tahun';
+    }
+
+    return PetugasData(
+      nama: json['nama']?.toString() ?? 'Petugas Tidak Diketahui',
+      id: json['id']?.toString() ?? '000',
+      masaKerja: masaKerjaText,
+      imgUrl: fotoUrl,
+      rawData: json, // 👈 Simpan semua data dari database ke sini
+    );
+  }
 }
 
 class DaftarPetugasPage extends StatefulWidget {
@@ -20,15 +66,94 @@ class DaftarPetugasPage extends StatefulWidget {
 }
 
 class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
-  // Data Dummy sesuai gambar
-  final List<PetugasData> listPetugas = [
-    PetugasData(nama: 'Budi Prakoso', id: 'ID. 001', masaKerja: 'Masa kerja : 1 Tahun', imgUrl: 'https://randomuser.me/api/portraits/men/11.jpg'),
-    PetugasData(nama: 'Andi Surandi', id: 'ID. 002', masaKerja: 'Masa kerja : 2 Tahun', imgUrl: 'https://randomuser.me/api/portraits/men/32.jpg'),
-    PetugasData(nama: 'Susilo Putra', id: 'ID. 003', masaKerja: 'Masa kerja : 6 Bulan', imgUrl: 'https://randomuser.me/api/portraits/men/44.jpg'),
-    PetugasData(nama: 'Mikael Putra', id: 'ID. 004', masaKerja: 'Masa kerja : 5 Tahun', imgUrl: 'https://randomuser.me/api/portraits/men/55.jpg'),
-    PetugasData(nama: 'Putra Pratama', id: 'ID. 005', masaKerja: 'Masa kerja : 3 Tahun', imgUrl: 'https://randomuser.me/api/portraits/men/62.jpg'),
-    PetugasData(nama: 'Ahmad Wijaya', id: 'ID. 006', masaKerja: 'Masa kerja : 1 Tahun', imgUrl: 'https://randomuser.me/api/portraits/men/71.jpg'),
-  ];
+  List<PetugasData> _listPetugas = [];
+  List<PetugasData> _filteredPetugas = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchDaftarPetugas());
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    String query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredPetugas = _listPetugas.where((petugas) {
+        return petugas.nama.toLowerCase().contains(query) ||
+            petugas.id.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  Future<void> _fetchDaftarPetugas() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Sesi telah habis, silakan login kembali.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // API Endpoint Laravel: Pastikan backend sudah memfilter petugas berdasarkan ID Supervisor yang login
+      final uri = Uri.parse('${ApiClient.baseUrl}/supervisor/petugas');
+      final response = await http.get(
+        uri,
+        headers: ApiClient.headers(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+
+        // Ekstraksi array data secara aman
+        List<dynamic> dataArray = [];
+        if (body is List) {
+          dataArray = body;
+        } else if (body is Map &&
+            body.containsKey('data') &&
+            body['data'] is List) {
+          dataArray = body['data'];
+        }
+
+        final parsedList = dataArray
+            .map((json) => PetugasData.fromJson(json))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _listPetugas = parsedList;
+            _filteredPetugas = parsedList;
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Gagal memuat data (${response.statusCode})');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,24 +163,49 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
         child: Column(
           children: [
             const AegisTopHeader(),
-            // _buildTopHeader(),
             _buildTitleBar(context),
             _buildSearchBar(),
+
+            // --- TAMBAHKAN BAGIAN INI UNTUK MENAMPILKAN TOTAL PETUGAS ---
+            Padding(
+              padding: const EdgeInsets.only(left: 28, right: 28, top: 16),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.people_alt,
+                    size: 18,
+                    color: Color(0xFF1976D2),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Total: ${_filteredPetugas.length} Petugas',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1976D2),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // -----------------------------------------------------------
             const SizedBox(height: 16),
             Expanded(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 24,
+                ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
                 ),
-                child: ListView.builder(
-                  itemCount: listPetugas.length,
-                  itemBuilder: (context, index) {
-                    return _buildPetugasCard(listPetugas[index]);
-                  },
-                ),
+                child: _buildContent(),
               ),
             ),
           ],
@@ -64,35 +214,54 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
     );
   }
 
-  // Widget _buildTopHeader() {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-  //     decoration: const BoxDecoration(
-  //       color: Color(0xFF0F172A),
-  //       borderRadius: BorderRadius.only(bottomLeft: Radius.circular(8), bottomRight: Radius.circular(8)),
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         // Logo Kecil dari Supabase
-  //         Image.network(
-  //           'https://dwyfjwwgrtdspgdaifyv.supabase.co/storage/v1/object/public/logo/aegis-nobg.png',
-  //           height: 24,
-  //           width: 24,
-  //           fit: BoxFit.contain,
-  //           errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, color: Colors.lightBlueAccent, size: 24), // Fallback kalau internet mati
-  //         ),
-  //         const SizedBox(width: 8),
-  //         const Expanded(
-  //           child: Text(
-  //             'ADVANCED EMERGENCY & GUARD INFORMATION SYSTEM',
-  //             style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 0.5),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1964D4)),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchDaftarPetugas,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_filteredPetugas.isEmpty) {
+      return const Center(
+        child: Text(
+          'Tidak ada petugas yang ditemukan.',
+          style: TextStyle(color: Colors.black54),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchDaftarPetugas,
+      child: ListView.builder(
+        itemCount: _filteredPetugas.length,
+        itemBuilder: (context, index) {
+          return _buildPetugasCard(_filteredPetugas[index]);
+        },
+      ),
+    );
+  }
 
   Widget _buildTitleBar(BuildContext context) {
     return Padding(
@@ -106,7 +275,11 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
           const SizedBox(width: 16),
           const Text(
             'Daftar Petugas',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ],
       ),
@@ -120,14 +293,24 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: TextField(
+          controller: _searchController,
           decoration: InputDecoration(
             hintText: 'Masukkan nama petugas',
             hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
             prefixIcon: const Icon(Icons.search, color: Colors.black54),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
@@ -138,14 +321,11 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
   Widget _buildPetugasCard(PetugasData data) {
     return GestureDetector(
       onTap: () {
-        // Navigasi ke Detail Petugas
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => DetailPetugasPage(
-              nama: data.nama,
-              idPetugas: data.id.replaceAll('ID. ', ''), // Mengambil angkanya saja
-              masaKerja: data.masaKerja,
+              data: data.rawData, // 👈 Kirim data lengkap ke halaman detail
               imgUrl: data.imgUrl,
             ),
           ),
@@ -158,7 +338,13 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -167,7 +353,11 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
               width: 60,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(image: NetworkImage(data.imgUrl), fit: BoxFit.cover),
+                color: Colors.grey.shade200,
+                image: DecorationImage(
+                  image: NetworkImage(data.imgUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -175,13 +365,36 @@ class _DaftarPetugasPageState extends State<DaftarPetugasPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(data.nama, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                  Text(
+                    data.nama,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(data.masaKerja, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600)),
+                  Text(
+                    data.masaKerja,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Text(data.id, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black)),
+            Text(
+              'ID. ${data.id}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+            ),
           ],
         ),
       ),
