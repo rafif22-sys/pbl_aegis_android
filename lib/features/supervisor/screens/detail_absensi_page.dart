@@ -74,11 +74,11 @@ class DetailAbsensiPage extends StatelessWidget {
     } else {
       // MENUNGGU ATAU LAINNYA
       masukWaktu   = hasMasuk ? jamMasuk! : '--:--';
-      masukDesc    = hasMasuk ? 'Tepat waktu' : 'Menunggu absensi';
+      masukDesc    = hasMasuk ? 'Berhasil Presensi' : 'Menunggu presensi';
       masukBgColor = hasMasuk ? const Color(0xFF73C87D) : const Color(0xFF1969C9);
 
       pulangWaktu   = hasPulang ? jamPulang! : '--:--';
-      pulangDesc    = hasPulang ? 'Tepat waktu' : 'Belum absen';
+      pulangDesc    = hasPulang ? 'Tepat waktu' : 'Belum presensi';
       pulangBgColor = hasPulang ? const Color(0xFFFF6B6B) : Colors.grey.shade400;
     }
 
@@ -167,7 +167,7 @@ class DetailAbsensiPage extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           const Text(
-            'Absensi Petugas',
+            'Presensi Petugas',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
           ),
         ],

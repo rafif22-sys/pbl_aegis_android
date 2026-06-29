@@ -206,23 +206,6 @@ class _SesiPatroliScreenState extends State<SesiPatroliScreen> {
 
     setState(() => _loadingCheckpointId = cp.id);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(children: [
-          SizedBox(
-            width: 16, height: 16,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white),
-          ),
-          SizedBox(width: 12),
-          Text('Mengambil lokasi…'),
-        ]),
-        duration: Duration(seconds: 15),
-        backgroundColor: Color(0xFF1565C0),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
     try {
       // 1. Cek & minta izin GPS
       LocationPermission perm = await Geolocator.checkPermission();
@@ -231,7 +214,6 @@ class _SesiPatroliScreenState extends State<SesiPatroliScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
@@ -307,7 +289,6 @@ class _SesiPatroliScreenState extends State<SesiPatroliScreen> {
 
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         _showInfoDialog(
           icon: Icons.gps_off_rounded,
           iconColor: const Color(0xFFDC2626),

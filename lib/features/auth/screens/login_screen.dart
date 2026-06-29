@@ -345,57 +345,30 @@ class _LoginScreenState extends State<LoginScreen>
 
                                         const SizedBox(height: 16),
 
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () => Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => const ForgotPasswordScreen(),
-                                                ),
-                                              ),
-                                              style: TextButton.styleFrom(
-                                                padding: EdgeInsets.zero,
-                                                minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              ),
-                                              child: const Text(
-                                                'LUPA SANDI?',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF0F2A44),
-                                                  letterSpacing: 1.5,
-                                                ),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: TextButton(
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => const ForgotPasswordScreen(),
                                               ),
                                             ),
-                                            Container(
-                                              width: 4,
-                                              height: 4,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF0F2A44).withOpacity(0.3),
-                                                shape: BoxShape.circle,
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            child: const Text(
+                                              'LUPA SANDI?',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF0F2A44),
+                                                letterSpacing: 1.5,
                                               ),
                                             ),
-                                            TextButton(
-                                              onPressed: () {},
-                                              style: TextButton.styleFrom(
-                                                padding: EdgeInsets.zero,
-                                                minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              ),
-                                              child: const Text(
-                                                'BANTUAN',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF0F2A44),
-                                                  letterSpacing: 1.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ],
                                     ),
