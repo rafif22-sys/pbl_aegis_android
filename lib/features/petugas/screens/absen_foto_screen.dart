@@ -69,7 +69,7 @@ class _AbsenFotoScreenState extends State<AbsenFotoScreen> {
       }
 
       final kamera = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == CameraLensDirection.front, //inisialisasi kamera depan
         orElse: () => cameras.first,
       );
 
@@ -90,7 +90,7 @@ class _AbsenFotoScreenState extends State<AbsenFotoScreen> {
     setState(() => _capturing = true);
     try {
       final foto = await _ctrl!.takePicture();
-      if (mounted) setState(() { _foto = File(foto.path); _capturing = false; });
+      if (mounted) setState(() { _foto = File(foto.path); _capturing = false; }); //disimpan dalam bentuk file
     } catch (e) {
       if (mounted) setState(() => _capturing = false);
     }

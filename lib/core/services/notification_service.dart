@@ -90,7 +90,7 @@ class NotificationService {
 
     // Handle tap saat app background via FCM langsung
     FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      final type = msg.data['type'] ?? '';
+      final type = msg.data['type'] ?? ''; // payload untuk background
       if (type == 'sos_baru') {
         final sosId = msg.data['sos_id'];
         if (sosId != null) _navigateToSosDetail(sosId);
@@ -140,7 +140,7 @@ class NotificationService {
 
       // Ambil role dari AuthProvider, fallback ke SharedPreferences
       // jika auth.user belum ter-load (misal app baru dibuka dari notif)
-      String role = auth.user?.role ?? '';
+      String role = auth.user?.role ?? '';//pengecekan role
       if (role.isEmpty) {
         final prefs = await SharedPreferences.getInstance();
         role = prefs.getString('user_role') ?? '';
@@ -152,7 +152,7 @@ class NotificationService {
           builder: (_) {
             switch (role) {
               case 'warga':
-                return warga.DetailSosScreen(sos: sos);
+                return warga.DetailSosScreen(sos: sos);  //mengarahkan ke navigator halaman masing masing
               case 'petugas':
               case 'supervisor':
               default:
@@ -183,7 +183,7 @@ class NotificationService {
   static Future<void> showLocalNotification(RemoteMessage msg) async {
     if (kIsWeb) return;
 
-    final title = msg.notification?.title ?? msg.data['title'];
+    final title = msg.notification?.title ?? msg.data['title']; //ambil payload
     final body = msg.notification?.body ?? msg.data['body'];
     
     if (title == null && body == null) return;
